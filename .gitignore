@@ -1,0 +1,53 @@
+# ESP-IDF build output
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+
+# Managed components cache
+managed_components/
+
+# Python virtualenv
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Secrets / provisioning (never commit these)
+secrets.env
+*.key
+nvs_partition*.bin
+.current_board
+
+# User configuration (local only)
+sdkconfig.user
+sdkconfig.xiao_s3_sense
+sdkconfig.xiao_s3_sense.old
+build.xiao_s3_sense/
+mac/private/
+
+# Local test assets and provisioned device data
+work/
+captures/
+*.log
+original-flash*.bin
+build.*/
+sdkconfig.*.old
+.env
+.env.*
+!.env.example
+
+# Board-generated configurations may contain credentials; publish defaults only.
+sdkconfig.xiao_*

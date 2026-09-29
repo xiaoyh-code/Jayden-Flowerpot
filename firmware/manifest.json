@@ -1,0 +1,32 @@
+{
+  "board": "Seeed XIAO ESP32S3 Sense",
+  "idf": "5.5.5",
+  "flash_size": "8MB",
+  "flash_mode": "dio",
+  "flash_freq": "80m",
+  "camera": "OV3660 VGA JPEG / explicit MJPEG preview; two stream buffers; selectable10/15/20/25fps cap default20; derived50/60Hz banding steps; WB/brightness/saturation controls; ten-minute limit with stop/disconnect cleanup",
+  "files": {
+    "bootloader.bin": {
+      "offset": "0x0",
+      "bytes": 20848,
+      "sha256": "3a9b9a05542951fc7f7b0814ee5ebaf90d3b10a0411c65e9c3e8bec07c5dcf3c"
+    },
+    "partition-table.bin": {
+      "offset": "0x8000",
+      "bytes": 3072,
+      "sha256": "c36113a7d84a3e876d2de130c6c2f264b7fe901c61b89cfcedf9de4a135c8837"
+    },
+    "ota_data_initial.bin": {
+      "offset": "0xf000",
+      "bytes": 8192,
+      "sha256": "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f"
+    },
+    "espclaw.bin": {
+      "offset": "0x20000",
+      "bytes": 1078832,
+      "sha256": "52ac7d01f1ef9e04bf407116251cfc1808c1d26758823a3f166109f871af711b"
+    }
+  },
+  "nvs": "Private device configuration is excluded; mac/prepare_nvs.py produces mac/private/nvs_partition.bin for offset0x9000.",
+  "webui": "Mac127.0.0.1:8787; authenticated board control port80 and MJPEG stream port81"
+}

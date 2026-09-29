@@ -1,0 +1,141 @@
+/*
+ * ESPClaw - tool/builtin_tools.def
+ * X-macro tool table. Add new tools here in 3 steps:
+ *  1) Implement handler in tool_*.c with tool_execute_fn signature
+ *  2) Declare handler in tool_registry.c (static forward decl)
+ *  3) Add TOOL_ENTRY() line below
+ */
+
+/* GPIO */
+TOOL_ENTRY("gpio_write",
+    "Set GPIO pin HIGH/LOW",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"pin\":{\"type\":\"integer\"},"
+      "\"state\":{\"type\":\"integer\",\"description\":\"0=LOW,1=HIGH\"}},"
+    "\"required\":[\"pin\",\"state\"]}",
+    tool_gpio_write)
+
+TOOL_ENTRY("gpio_read",
+    "Read GPIO pin state",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"pin\":{\"type\":\"integer\"}},"
+    "\"required\":[\"pin\"]}",
+    tool_gpio_read)
+
+TOOL_ENTRY("gpio_read_all",
+    "Read all GPIO pin states",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_gpio_read_all)
+
+TOOL_ENTRY("delay",
+    "Wait N milliseconds (max 60000)",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"milliseconds\":{\"type\":\"integer\"}},"
+    "\"required\":[\"milliseconds\"]}",
+    tool_delay)
+
+/* Persistent memory */
+TOOL_ENTRY("memory_set",
+    "Store key-value in NVS. Key must start with u_",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"key\":{\"type\":\"string\"},"
+      "\"value\":{\"type\":\"string\"}},"
+    "\"required\":[\"key\",\"value\"]}",
+    tool_memory_set)
+
+TOOL_ENTRY("memory_get",
+    "Get value from NVS by key (u_*)",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"key\":{\"type\":\"string\"}},"
+    "\"required\":[\"key\"]}",
+    tool_memory_get)
+
+TOOL_ENTRY("memory_delete",
+    "Delete key from NVS (u_*)",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"key\":{\"type\":\"string\"}},"
+    "\"required\":[\"key\"]}",
+    tool_memory_delete)
+
+TOOL_ENTRY("memory_list",
+    "List all user memory keys",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_memory_list)
+
+/* System diagnostics */
+TOOL_ENTRY("get_diagnostics",
+    "Get heap, uptime, chip info",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_system_diagnostics)
+
+TOOL_ENTRY("get_version",
+    "Get firmware version",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_get_version)
+
+/* Cron - scheduled tasks */
+TOOL_ENTRY("cron_schedule",
+    "Schedule task: periodic/daily/once",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"type\":{\"type\":\"string\",\"enum\":[\"periodic\",\"daily\",\"once\"]},"
+      "\"action\":{\"type\":\"string\"},"
+      "\"interval_seconds\":{\"type\":\"integer\"},"
+      "\"hour\":{\"type\":\"integer\"},"
+      "\"minute\":{\"type\":\"integer\"},"
+      "\"delay_seconds\":{\"type\":\"integer\"}},"
+    "\"required\":[\"type\",\"action\"]}",
+    tool_cron_schedule)
+
+TOOL_ENTRY("cron_list",
+    "List scheduled tasks",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_cron_list)
+
+TOOL_ENTRY("cron_cancel",
+    "Cancel task by ID",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"id\":{\"type\":\"integer\"}},"
+    "\"required\":[\"id\"]}",
+    tool_cron_cancel)
+
+TOOL_ENTRY("cron_cancel_all",
+    "Cancel all scheduled tasks",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_cron_cancel_all)
+
+/* Time */
+TOOL_ENTRY("get_time",
+    "Get current time and timezone",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_get_time)
+
+TOOL_ENTRY("set_timezone",
+    "Set timezone (e.g. CST-8, UTC)",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"timezone\":{\"type\":\"string\"}},"
+    "\"required\":[\"timezone\"]}",
+    tool_set_timezone)
+
+/* Persona */
+TOOL_ENTRY("set_persona",
+    "Set AI style: neutral/friendly/technical/witty",
+    "{\"type\":\"object\",\"properties\":{"
+      "\"persona\":{\"type\":\"string\"}},"
+    "\"required\":[\"persona\"]}",
+    set_persona_exec)
+
+TOOL_ENTRY("get_persona",
+    "Get current AI persona",
+    "{\"type\":\"object\",\"properties\":{}}",
+    get_persona_exec)
+
+/* Network */
+TOOL_ENTRY("wifi_scan",
+    "Scan WiFi networks (disconnects briefly!)",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_wifi_scan)
+
+TOOL_ENTRY("get_network_info",
+    "Get IP, gateway, DNS, RSSI, MAC, SSID",
+    "{\"type\":\"object\",\"properties\":{}}",
+    tool_get_network_info)

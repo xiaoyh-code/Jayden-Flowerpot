@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111718">
+  <title>ESPClaw · Sense vision</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到工作台</a>
+  <header class="app-header">
+    <div class="identity">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M6 11V6h5m10 0h5v5M6 21v5h5m10 0h5v-5"/><circle cx="16" cy="16" r="5"/><path d="M16 9v2m0 10v2M9 16h2m10 0h2"/></svg></span>
+      <div class="brand">ESPClaw</div>
+      <span class="brand-divider" aria-hidden="true">/</span>
+      <h1>Sense vision</h1>
+    </div>
+    <div class="header-controls">
+      <div class="connection-group" aria-label="連接狀態">
+        <span class="status-pill" id="device-status" data-state="pending"><span class="status-dot" aria-hidden="true"></span><span>ESP32 連接中</span></span>
+        <span class="status-pill" id="model-status" data-state="pending"><span class="status-dot" aria-hidden="true"></span><span>模型連接中</span></span>
+      </div>
+      <button class="icon-button settings-trigger" id="open-settings" type="button" aria-label="工作台設定" title="工作台設定">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 3-1 3-3 1-2-1-2 4 2 2v2l-2 2 2 4 3-1 2 1 1 3h4l1-3 2-1 3 1 2-4-2-2v-2l2-2-2-4-3 1-2-1-1-3Z" transform="translate(1 -1) scale(.9)"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <div class="workspace-heading">
+      <div><span class="eyebrow">YOUR LOCAL WORKSPACE</span><h2>相片與對話</h2></div>
+      <p class="workspace-note"><span class="small-cross" aria-hidden="true">+</span>由你按下快門</p>
+    </div>
+
+    <div id="connection-notice" class="connection-notice" role="status" hidden></div>
+
+    <div class="workbench">
+      <section class="camera-panel" aria-labelledby="camera-title">
+        <div class="panel-heading">
+          <div class="section-title"><span class="section-index">01</span><h3 id="camera-title">相機</h3></div>
+          <span class="device-label" id="device-name">XIAO ESP32S3 SENSE</span>
+        </div>
+        <div class="camera-stage" id="camera-stage">
+          <div class="stage-tag"><span class="square-dot" aria-hidden="true"></span><span id="stage-mode-label">單次拍攝</span></div>
+          <div class="live-badge" id="live-badge" role="status" hidden><span aria-hidden="true"></span>LIVE</div>
+          <span class="frame-corner top-left" aria-hidden="true"></span><span class="frame-corner top-right" aria-hidden="true"></span>
+          <span class="frame-corner bottom-left" aria-hidden="true"></span><span class="frame-corner bottom-right" aria-hidden="true"></span>
+          <div class="camera-empty" id="camera-empty">
+            <div class="camera-glyph" aria-hidden="true"><svg viewBox="0 0 96 80"><path d="M13 23h18l5-9h24l5 9h18v43H13Z"/><circle cx="48" cy="44" r="15"/><circle cx="48" cy="44" r="8"/><path d="M71 31h4M5 12V5h10m66 0h10v7M5 68v7h10m66 0h10v-7"/></svg></div>
+            <p class="empty-title">未有相片，等你按掣。</p>
+            <p>拍一張相，或者直接拍照問 Qwen。</p>
+          </div>
+          <button id="image-preview" class="image-preview" type="button" aria-label="放大最新相片" hidden><img id="camera-image" alt="ESP32 最新拍攝的相片"></button>
+          <img id="stream-image" class="stream-image" alt="ESP32 相機即時畫面" hidden>
+          <div class="stage-pending" id="stage-pending" hidden><span class="spinner" aria-hidden="true"></span><span id="stage-pending-text">正在拍攝…</span></div>
+          <div class="stage-caption"><span class="mono" id="image-counter">NO IMAGE YET</span><span id="image-timestamp">等待第一張相片</span></div>
+        </div>
+        <div class="camera-toolbar">
+          <div class="capture-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></svg><span>相機由你控制</span></div>
+          <div class="camera-buttons">
+          <button class="button stream-button" id="stream-button" type="button" aria-pressed="false" aria-describedby="stream-notice" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-4v12l-6-4Z"/></svg><span id="stream-button-label">開始直播</span></button>
+          <button class="button secondary-button" id="capture-button" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h5l2-3h4l2 3h5v13H3Z"/><circle cx="12" cy="13" r="4"/></svg><span>拍一張</span></button>
+          </div>
+        </div>
+        <div class="stream-info"><p id="stream-notice">直播不會自動交畀 Qwen 分析。</p><p id="stream-status" role="status" aria-live="polite" hidden></p></div>
+        <div class="camera-detail"><span id="device-address">正在連接 ESP32…</span><button class="text-button" id="open-camera-settings" type="button">調校相機 <span aria-hidden="true">↗</span></button></div>
+      </section>
+
+      <section class="conversation-panel" aria-labelledby="conversation-title">
+        <div class="panel-heading conversation-heading"><div class="section-title"><span class="section-index">02</span><h3 id="conversation-title">對話</h3></div><span class="local-label">LOCAL</span></div>
+        <div class="model-line"><span class="model-symbol" aria-hidden="true">Q</span><div><strong>Qwen</strong><span id="model-name">等待模型資料</span></div><span class="model-indicator" id="model-indicator" aria-hidden="true"></span></div>
+        <div class="messages" id="messages" role="log" aria-label="對話記錄" aria-live="polite" aria-relevant="additions text">
+          <div class="conversation-empty" id="conversation-empty"><span class="empty-line" aria-hidden="true"></span><h4>你眼前嘅事物，<br>都可以問一問。</h4><p>影低枱上嘅物件、讀一段文字，<br>或者切換到文字對話。</p><div class="suggestion-label">試下問</div><button type="button" class="suggestion" id="sample-prompt">張相入面有啲咩？<span aria-hidden="true">↗</span></button></div>
+        </div>
+        <div class="activity-line" id="activity-line" role="status" aria-live="polite"><span class="activity-mark" aria-hidden="true"></span><span id="activity-text">正在連接工作台…</span></div>
+        <form class="composer" id="composer">
+          <div class="mode-switch" role="group" aria-label="對話模式"><button type="button" id="mode-look" aria-pressed="true">相片分析</button><button type="button" id="mode-chat" aria-pressed="false">文字對話</button></div>
+          <label for="prompt" id="prompt-label">想問咩？</label>
+          <div class="prompt-wrap"><textarea id="prompt" rows="3" maxlength="800" placeholder="例如：張相入面有啲咩？" aria-describedby="prompt-hint"></textarea><span class="keyboard-hint" id="keyboard-hint" aria-hidden="true">⌘ ↵</span></div>
+          <p class="prompt-hint" id="prompt-hint">按下後會拍攝一張新相片，再交畀 Qwen 分析。</p>
+          <button class="button primary-button" id="submit-button" type="submit" disabled><span id="submit-label">拍照並分析</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+        </form>
+      </section>
+    </div>
+    <footer class="workspace-footer"><p><span class="privacy-dot" aria-hidden="true"></span>相片只喺 Mac 處理</p><span>ESPClaw · Sense vision</span></footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-heading"><div><span class="eyebrow">WORKSPACE SETTINGS</span><h2 id="settings-title">工作台設定</h2></div><button class="icon-button" id="close-settings" aria-label="關閉設定" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+    <p class="settings-intro">ESP32 同 Mac 需要連接到同一個區域網絡。Wi-Fi 改咗之後，可以喺呢度更新位址。</p>
+    <form id="settings-form"><label for="board-host">ESP32 位址</label><input id="board-host" name="board_host" type="text" inputmode="decimal" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="例如：192.168.1.25" aria-describedby="board-host-hint settings-error"><p class="field-hint" id="board-host-hint">填入 ESP32 的本地 IP 位址。</p><p class="settings-error" id="settings-error" role="alert" hidden></p><button class="button primary-button" id="save-settings" type="submit">儲存位址</button></form>
+    <section class="camera-tuning" aria-labelledby="camera-tuning-title">
+      <div class="tuning-heading"><h3 id="camera-tuning-title" tabindex="-1">相機調校</h3><button class="text-button" id="reload-camera-settings" type="button">重新讀取</button></div>
+      <p class="tuning-status" id="camera-settings-status" role="status" aria-live="polite">讀取相機設定後即可調校。</p>
+      <form id="camera-settings-form" hidden>
+        <fieldset id="camera-settings-fields" disabled>
+          <div class="tuning-field"><label for="camera-fps">目標幀率</label><select id="camera-fps" name="fps" aria-describedby="camera-fps-hint"><option value="10">10 fps</option><option value="15">15 fps</option><option value="20">20 fps</option><option value="25">25 fps</option></select><p class="field-hint" id="camera-fps-hint">設定目標上限；實際幀率會喺直播畫面顯示。</p></div>
+          <div class="tuning-grid">
+            <div class="tuning-field"><label for="camera-flicker">防燈光閃爍</label><select id="camera-flicker" name="flicker_hz"><option value="auto">自動</option><option value="50">50 Hz</option><option value="60">60 Hz</option></select></div>
+            <div class="tuning-field"><label for="camera-wb">白平衡</label><select id="camera-wb" name="wb_mode"><option value="auto">自動</option><option value="daylight">日光</option><option value="office">辦公室白光</option><option value="home">家居暖光</option></select></div>
+          </div>
+          <p class="field-hint tuning-explanation">畫面偏色可試白平衡；燈光閃爍可按燈具的電源頻率調整。</p>
+          <div class="tuning-grid tuning-sliders">
+            <div class="tuning-field"><label for="camera-brightness">亮度 <output id="brightness-value" for="camera-brightness">—</output></label><input id="camera-brightness" name="brightness" type="range" min="-2" max="2" step="1" aria-describedby="camera-adjustment-hint"><div class="range-endpoints" aria-hidden="true"><span>較暗</span><span>較亮</span></div></div>
+            <div class="tuning-field"><label for="camera-saturation">飽和度 <output id="saturation-value" for="camera-saturation">—</output></label><input id="camera-saturation" name="saturation" type="range" min="-2" max="2" step="1" aria-describedby="camera-adjustment-hint"><div class="range-endpoints" aria-hidden="true"><span>較淡</span><span>較濃</span></div></div>
+          </div>
+          <p class="field-hint" id="camera-adjustment-hint">0 為中性值；先睇目前數值，再逐級微調。</p>
+          <button class="button primary-button" id="save-camera-settings" type="submit">儲存相機調校</button>
+        </fieldset>
+      </form>
+      <p class="tuning-footnote">儲存唔會拍攝；會喺下次由你開始直播或拍照時套用。</p>
+    </section>
+    <div class="settings-status"><span>模型</span><strong id="settings-model">等待連接</strong><span>Mac 連接</span><strong id="settings-bridge">等待連接</strong></div>
+    <p class="settings-footnote">更改連接設定唔會拍攝相片。</p>
+  </dialog>
+  <dialog id="image-dialog" class="image-dialog" aria-labelledby="large-image-title"><div class="image-dialog-heading"><h2 id="large-image-title">最新相片</h2><button class="icon-button" id="close-image" type="button" aria-label="關閉相片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><img id="large-image" alt="放大的 ESP32 相片"><p id="large-image-time"></p></dialog>
+</body>
+</html>
