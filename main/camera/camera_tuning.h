@@ -53,4 +53,48 @@ static inline bool espclaw_ov3660_banding(uint32_t sysclk, unsigned hts, unsigne
     return *max50 > 0 && *max60 > 0 && *max50 <= 63U && *max60 <= 63U;
 }
 
+/* OV5640 uses the main PLL, not the OV3660 PLLS register block above.
+ * OV5640 datasheet v2.03 tables 6-2/7-1/7-2 and pinned ov5640.c set_pll:
+ * https://files.seeedstudio.com/wiki/SeeedStudio-XIAO-ESP32S3/res/OV5640_datasheet.pdf
+ * At VGA/20MHz the driver's 1A/41/B4/02/00/13/26 registers give 45MHz.
+ * Reject undocumented divider encodings and bypass modes instead of guessing.
+ * No PLL or clock-source registers are changed by our application. */
+static inline uint32_t espclaw_ov5640_sysclk(uint32_t xclk, int r3034, int r3035,
+                                             int r3036, int r3037, int r3039,
+                                             int r3103, int r3108)
+{
+    if (!xclk || r3034 < 0 || r3035 < 0 || r3036 < 0 || r3037 < 0 ||
+        r3039 < 0 || r3103 < 0 || r3108 < 0 ||
+        (r3039 & 0x80) || !(r3103 & 0x02)) return 0;
+    unsigned bits = r3034 & 0x0f;
+    unsigned prediv = r3037 & 0x0f;
+    unsigned sysdiv = (r3035 >> 4) & 0x0f;
+    if ((bits != 8U && bits != 10U) || !sysdiv ||
+        (prediv != 1U && prediv != 2U && prediv != 3U &&
+         prediv != 4U && prediv != 6U && prediv != 8U) ||
+        r3036 < 4 || r3036 > 252 || (r3036 >= 128 && (r3036 & 1))) return 0;
+    unsigned rootdiv = (r3037 & 0x10) ? 2U : 1U;
+    uint64_t numerator = (uint64_t)xclk * (unsigned)r3036 * 4U;
+    uint64_t denominator = (uint64_t)prediv * sysdiv * rootdiv * bits *
+        (1U << (r3108 & 3));
+    uint64_t result = numerator / denominator;
+    return result > UINT32_MAX ? 0 : (uint32_t)result;
+}
+
+/* Band periods are 1/100s and 1/120s (datasheet4.6.1). Use whole row
+ * periods and leave four rows of exposure margin, cross-checked against
+ * ov5640_set_bandingfilter in Linux v6.6 drivers/media/i2c/ov5640.c. */
+static inline bool espclaw_ov5640_banding(uint32_t sysclk, unsigned hts, unsigned vts,
+                                           unsigned *step50, unsigned *step60,
+                                           unsigned *max50, unsigned *max60)
+{
+    if (!sysclk || !hts || vts <= 4U) return false;
+    *step50 = (unsigned)((uint64_t)sysclk / ((uint64_t)hts * 100U));
+    *step60 = (unsigned)((uint64_t)sysclk / ((uint64_t)hts * 120U));
+    if (!*step50 || !*step60 || *step50 > 1023U || *step60 > 1023U) return false;
+    *max50 = (vts - 4U) / *step50;
+    *max60 = (vts - 4U) / *step60;
+    return *max50 > 0 && *max60 > 0 && *max50 <= 63U && *max60 <= 63U;
+}
+
 #endif

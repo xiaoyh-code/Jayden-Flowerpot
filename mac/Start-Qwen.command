@@ -12,21 +12,26 @@ if [[ ! -x "$LMS" ]]; then
 fi
 
 open -g -a 'LM Studio'
-ready=0
+"$LMS" server start --port 1234 --bind 127.0.0.1
+
+# `lms status` also succeeds while the server is OFF. Wait for the exact
+# installed runtime to be selectable before attempting to load the model.
+runtime_ready=0
+runtime_result=''
 for attempt in {1..30}; do
-  if "$LMS" status >/dev/null 2>&1; then
-    ready=1
+  if runtime_result=$("$LMS" runtime select "$RUNTIME" 2>&1); then
+    print -r -- "$runtime_result"
+    runtime_ready=1
     break
   fi
-  sleep 1
+  if (( attempt < 30 )); then sleep 1; fi
 done
-if (( ! ready )); then
-  print -u2 'LM Studio 未能啟動，請打開主程式再試。'
+if (( ! runtime_ready )); then
+  print -u2 '未能選用指定嘅 MLX 1.10.0 runtime，模型未有載入。請等 LM Studio 啟動完成後再試。'
+  print -ru2 -- "$runtime_result"
   exit 1
 fi
 
-"$LMS" server start --port 1234 --bind 127.0.0.1
-"$LMS" runtime select "$RUNTIME"
 if ! "$LMS" ps --json | /usr/bin/grep -Eq '"identifier"[[:space:]]*:[[:space:]]*"qwen3\.8-27b"'; then
   "$LMS" load "$MODEL" --identifier "$MODEL_ID" --context-length 32768 --parallel 1 -y
 fi

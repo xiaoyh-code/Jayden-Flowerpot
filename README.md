@@ -1,11 +1,12 @@
 # Jayden Flowerpot
 
-用 **Seeed Studio XIAO ESP32S3 Sense（OV3660）** 同 Mac 上嘅本地 Qwen，整一個可以睇畫面、手動拍照分析、文字對話嘅小型工作台。ESP32 負責相機同裝置端 agent；模型喺 Mac 嘅 LM Studio 運行。
+用 **Seeed Studio XIAO ESP32S3 Sense（OV3660／OV5640）** 同 Mac 上嘅本地 Qwen，整一個可以睇畫面、手動拍照分析、文字對話嘅小型工作台。ESP32 負責相機同裝置端 agent；模型喺 Mac 嘅 LM Studio 運行。
 
 ## 目前功能
 
 - **VGA 即時畫面**：640 × 480 MJPEG，手動開始／停止；顯示實際收到嘅 FPS。
 - **相機調校**：目標 10／15／20／25 FPS、50／60 Hz／自動防閃爍、自動／日光／辦公室／室內白平衡，以及亮度、飽和度。實際 FPS 受光線、曝光同 Wi-Fi 影響。
+- **OV3660／OV5640 自動識別**：按實際 sensor 選用驅動、時鐘計算同防閃爍設定；API 回報鏡頭型號，區分手動頻率設定同自動偵測結果。目前拍照及直播都係 VGA，未提供 5 MP 拍照或自動對焦。
 - **手動相片分析**：「拍一張」只拍照；「拍照並分析」先拍一張，再交畀本地 Qwen 回答。
 - **文字對話**：經 ESPClaw 裝置端 agent 接駁本地模型。
 - **Mac WebUI**：繁體中文介面、裝置與模型狀態、相機設定及文字紀錄。
@@ -28,7 +29,7 @@ WebUI 同 LM Studio 只聽本機位址；ESP32 經有 token 驗證嘅 LAN 橋接
 
 ## 首次設定
 
-需要 XIAO ESP32S3 Sense（8 MB Flash、8 MB PSRAM，呢個版本針對 OV3660）、USB 數據線、2.4 GHz Wi-Fi、Mac、Python 3，以及 **ESP-IDF v5.5.5**。本地模型需要另外安裝 LM Studio、下載模型及相容嘅 MLX runtime，詳見 [Mac 設定](mac/README.md)。
+需要 XIAO ESP32S3 Sense（8 MB Flash、8 MB PSRAM）、接腳及電氣規格相容嘅 OV3660 或 OV5640 DVP 模組、USB 數據線、2.4 GHz Wi-Fi、Mac、Python 3，以及 **ESP-IDF v5.5.5**。本地模型需要另外安裝 LM Studio、下載模型及相容嘅 MLX runtime，詳見 [Mac 設定](mac/README.md)。更換鏡頭前先斷電；韌體會喺相機初始化時讀取 sensor ID，唔需要手動改型號。
 
 以下指令喺專案根目錄執行；先啟用你安裝好嘅 ESP-IDF 環境：
 
@@ -61,6 +62,8 @@ idf.py -B build.xiao_s3_sense -p "$ESPCLAW_PORT" flash
 ```
 
 啟動器會檢查模型、橋接器及 WebUI，然後打開 `http://127.0.0.1:8787`。保留啟動器嘅 Terminal 視窗；按 Control-C 會停止今次由佢啟動嘅 WebUI／橋接器，LM Studio 會繼續運行。
+
+已有本專案分割表及 Wi-Fi 設定嘅板，可以按 [更新現有韌體](mac/README.md#更新現有韌體) 使用隨附嘅 `firmware/espclaw.bin`。更新工具會先核對檔案同指定裝置身份，再只寫入應用程式；首次安裝仍需完成上面嘅完整燒錄同 NVS 設定。
 
 ## 私人資料
 

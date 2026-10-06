@@ -68,7 +68,7 @@ def clean_camera_telemetry(value):
     if not isinstance(value, dict):
         return {}
     result = {}
-    for key in ("available", "valid", "settings_applied", "banding_enabled", "night_mode", "wb_manual"):
+    for key in ("available", "valid", "settings_applied", "banding_enabled", "banding_auto", "night_mode", "wb_manual"):
         if type(value.get(key)) is bool:
             result[key] = value[key]
     for key in ("sensor_pid", "settings_revision", "applied_revision", "sampled_at_us", "xclk_hz", "sysclk_hz", "hts", "vts", "band_step50", "band_step60", "max_bands50", "max_bands60"):
@@ -77,9 +77,10 @@ def clean_camera_telemetry(value):
     for key in ("nominal_sensor_fps", "exposure_lines"):
         if type(value.get(key)) in (int, float) and math.isfinite(value[key]) and 0 <= value[key] <= 1e9:
             result[key] = value[key]
-    if type(value.get("detected_hz")) is int and value["detected_hz"] in (0, 50, 60):
-        result["detected_hz"] = value["detected_hz"]
-    if value.get("sensor_name") in ("OV3660", "unknown"):
+    for key in ("detected_hz", "selected_hz"):
+        if type(value.get(key)) is int and value[key] in (0, 50, 60):
+            result[key] = value[key]
+    if value.get("sensor_name") in ("OV3660", "OV5640", "unknown"):
         result["sensor_name"] = value["sensor_name"]
     return result
 

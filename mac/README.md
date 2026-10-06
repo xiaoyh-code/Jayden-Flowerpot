@@ -23,6 +23,8 @@
 
 LM Studio API 保持只聽 `127.0.0.1`，唔需要開啟對外網絡存取。
 
+啟動器會重試選用指定 MLX runtime，等佢可用先載入模型，避免 LM Studio 啱啱開啟時過早執行載入。若約 30 次重試後仍然失敗，Terminal 會顯示原因。
+
 ## 2. 設定 Wi-Fi 同 Mac 橋接器
 
 ESP32 要用 **2.4 GHz Wi-Fi**，Mac 同 ESP32 要喺可以互相連線嘅同一個 LAN。以下全部係例子，請換成自己嘅 IP：
@@ -76,6 +78,24 @@ idf.py -B build.xiao_s3_sense -p "$ESPCLAW_PORT" monitor
 
 保留啟動器 Terminal。按 Control-C 只會停止今次由啟動器開啟嘅 WebUI／橋接器；既有服務及 LM Studio 唔會被關閉。再次執行啟動器，即使 WebUI 已開住，都會檢查並補開模型或橋接器。
 
+## 更新現有韌體
+
+隨附嘅更新工具只適用於**已安裝本專案 8 MB 分割表，並由 `ota_0`（`0x20000`）啟動**嘅 XIAO ESP32S3 Sense。佢唔會安裝 bootloader、切換 OTA slot 或寫入 NVS，亦唔適合空白板。唔確定現有分割表時，請使用主 README 嘅 ESP-IDF 安裝流程。
+
+先停止 serial monitor／Web Serial，準備有 `esptool` 嘅 Python（例如 ESP-IDF 環境）。指定要更新嗰塊板嘅 MAC，唔好照抄例子；可以先用 `python -m esptool --chip esp32s3 --port "$ESPCLAW_PORT" read_mac` 核對。以下 USB 埠、Python 路徑同 MAC 都要換成自己嘅資料：
+
+```sh
+ESPCLAW_PYTHON='/path/to/idf-python/bin/python' \
+  ./mac/Reflash-ESPClaw.command \
+  --expected-mac aa:bb:cc:dd:ee:ff /dev/cu.usbmodemXXXX
+```
+
+冇設定 `ESPCLAW_PYTHON` 時會用 `python3`。省略 USB 埠時，必須只偵測到一個 `/dev/cu.usbmodem*`。工具會核對 `firmware/manifest.json` 嘅 SHA-256、大小及寫入位址，再檢查 ESP32-S3 同指定 MAC；成功要同時有 esptool 正常退出同寫入 hash 驗證訊息。紀錄只寫入被 Git 忽略嘅 `mac/private/`。
+
+如果連唔到 bootloader，按住 BOOT、按一下 RESET，再放開 BOOT 後重試。燒錄完成後放開 BOOT，再按 RESET 或拔插 USB，等板連返 Wi-Fi，再啟動 WebUI。既有 Wi-Fi 同 token 會保留。
+
+OV3660 同 OV5640 會自動識別，兩款目前都用 640 × 480 JPEG／MJPEG。換鏡頭後如果保留咗舊鏡頭嘅調色設定，可先將白平衡設為「自動」、亮度同飽和度設為 `0` 再調校。50／60 Hz 係曝光防閃爍設定，唔代表直播 FPS 或量度到嘅 LED PWM 頻率。
+
 ## 連線排查
 
 | 情況 | 檢查 |
@@ -84,7 +104,7 @@ idf.py -B build.xiao_s3_sense -p "$ESPCLAW_PORT" monitor
 | 模型離線 | 執行 `./mac/Start-Qwen.command`，檢查指定模型及 MLX runtime 已下載。 |
 | 橋接器啟動失敗 | `bridge.json` 嘅 `bind` 必須係 Mac 目前嘅 LAN IPv4；檢查 1235 埠是否被其他程式使用。 |
 | 換咗 Wi-Fi／Mac IP | 更新私人設定，保留橋接 token，重新產生及寫入 NVS，重啟橋接器；板 IP 改咗就同步更新 WebUI。 |
-| 同一 LAN 都連唔到 | 檢查訪客 Wi-Fi 裝置隔離、防火牆或 VPN 嘅 LAN 存取設定。 |
+| 同一 LAN 都連唔到 | 檢查訪客 Wi-Fi 裝置隔離、防火牆或 VPN 嘅 LAN 存取設定。可以保留 VPN，但要允許本地網絡；如使用 NordVPN，檢查「Stay invisible on a local network」有冇阻隔 LAN。 |
 | FPS 低或畫面閃爍 | 實際 FPS 受曝光及 Wi-Fi 影響；按光源選 50／60 Hz 防閃爍，改善照明後再試。 |
 
 可以喺路由器為 Mac 同 ESP32 保留 DHCP 位址，減少 IP 改變後要重新設定嘅情況。

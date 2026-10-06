@@ -278,12 +278,15 @@ static esp_err_t camera_settings_response(httpd_req_t *req)
     ADD_NUMBER(detected_hz); ADD_NUMBER(band_step50); ADD_NUMBER(band_step60);
     ADD_NUMBER(max_bands50); ADD_NUMBER(max_bands60);
     ADD_BOOL(banding_enabled); ADD_BOOL(night_mode); ADD_BOOL(wb_manual);
+    ADD_BOOL(banding_auto); ADD_NUMBER(selected_hz);
     ADD_NUMBER(exposure_lines);
 #undef ADD_BOOL
 #undef ADD_NUMBER
-    cJSON_AddStringToObject(sample, "sensor_name", telemetry.sensor_pid == 0x3660 ? "OV3660" : "unknown");
+    cJSON_AddStringToObject(sample, "sensor_name", telemetry.sensor_pid == 0x3660 ? "OV3660" :
+                           telemetry.sensor_pid == 0x5640 ? "OV5640" : "unknown");
     if (telemetry.available) {
         for (unsigned i = 0; i < ESPCLAW_CAMERA_REGISTER_COUNT; ++i) {
+            if (telemetry.registers[i] < 0) continue;
             char key[12];
             snprintf(key, sizeof(key), "0x%04x", (unsigned)espclaw_camera_register_addresses[i]);
             cJSON_AddNumberToObject(registers, key, telemetry.registers[i]);

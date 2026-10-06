@@ -14,7 +14,7 @@ typedef struct {
     int saturation;    /* -2 through 2; zero is neutral. */
 } espclaw_camera_settings_t;
 
-#define ESPCLAW_CAMERA_REGISTER_COUNT 50U
+#define ESPCLAW_CAMERA_REGISTER_COUNT 56U
 extern const uint16_t espclaw_camera_register_addresses[ESPCLAW_CAMERA_REGISTER_COUNT];
 typedef struct {
     bool available, valid, settings_applied;
@@ -25,8 +25,10 @@ typedef struct {
     double nominal_sensor_fps;
     int detected_hz, band_step50, band_step60, max_bands50, max_bands60;
     bool banding_enabled, night_mode, wb_manual;
+    bool banding_auto;
+    int selected_hz;    /* Manual selection, or detector result in auto mode. */
     double exposure_lines;
-    int registers[ESPCLAW_CAMERA_REGISTER_COUNT];
+    int registers[ESPCLAW_CAMERA_REGISTER_COUNT]; /* -1 if not sampled. */
 } espclaw_camera_telemetry_t;
 
 /* Pure state access: never initializes or accesses the physical sensor.

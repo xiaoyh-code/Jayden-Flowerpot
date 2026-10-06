@@ -4,7 +4,7 @@
   "flash_size": "8MB",
   "flash_mode": "dio",
   "flash_freq": "80m",
-  "camera": "OV3660 VGA JPEG / explicit MJPEG preview; two stream buffers; selectable10/15/20/25fps cap default20; derived50/60Hz banding steps; WB/brightness/saturation controls; ten-minute limit with stop/disconnect cleanup",
+  "camera": "OV3660 / OV5640 auto-detection; VGA JPEG and explicit MJPEG preview; sensor-specific 50/60Hz banding and cached telemetry; white balance/brightness/saturation controls; default20fps cap; no autofocus",
   "files": {
     "bootloader.bin": {
       "offset": "0x0",
@@ -23,8 +23,8 @@
     },
     "espclaw.bin": {
       "offset": "0x20000",
-      "bytes": 1078832,
-      "sha256": "52ac7d01f1ef9e04bf407116251cfc1808c1d26758823a3f166109f871af711b"
+      "bytes": 1080160,
+      "sha256": "07486534ef3f635f2adf7f3b1968ecf3f7681258c26690e168efad855a60e3ee"
     }
   },
   "nvs": "Private device configuration is excluded; mac/prepare_nvs.py produces mac/private/nvs_partition.bin for offset0x9000.",

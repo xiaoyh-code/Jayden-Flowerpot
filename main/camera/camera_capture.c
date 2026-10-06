@@ -61,6 +61,7 @@ static espclaw_camera_settings_t s_settings = {
 };
 static unsigned s_settings_revision = 1;
 static espclaw_camera_telemetry_t s_telemetry;
+#define CAMERA_OV3660_REGISTER_COUNT 50U
 const uint16_t espclaw_camera_register_addresses[ESPCLAW_CAMERA_REGISTER_COUNT] = {
     0x3004, 0x300c, 0x303a, 0x303b, 0x303c, 0x303d, 0x3108,
     0x380c, 0x380d, 0x380e, 0x380f, 0x3824, 0x460c,
@@ -71,6 +72,8 @@ const uint16_t espclaw_camera_register_addresses[ESPCLAW_CAMERA_REGISTER_COUNT] 
     0x5587, 0x5588,
     0x5381, 0x5382, 0x5383, 0x5384, 0x5385, 0x5386,
     0x5387, 0x5388, 0x5389, 0x538a, 0x538b,
+    /* OV5640 main PLL and clock source (not the OV3660 PLLS). */
+    0x3034, 0x3035, 0x3036, 0x3037, 0x3039, 0x3103,
 };
 
 static SemaphoreHandle_t camera_mutex(void)
@@ -120,6 +123,13 @@ static int sensor_read16(sensor_t *sensor, unsigned address)
 
 static uint32_t sensor_sysclk(sensor_t *sensor)
 {
+    if (sensor->id.PID == OV5640_PID) {
+        return espclaw_ov5640_sysclk(sensor->xclk_freq_hz,
+            sensor->get_reg(sensor, 0x3034, 0xff), sensor->get_reg(sensor, 0x3035, 0xff),
+            sensor->get_reg(sensor, 0x3036, 0xff), sensor->get_reg(sensor, 0x3037, 0xff),
+            sensor->get_reg(sensor, 0x3039, 0xff), sensor->get_reg(sensor, 0x3103, 0xff),
+            sensor->get_reg(sensor, 0x3108, 0xff));
+    }
     return espclaw_ov3660_sysclk(sensor->xclk_freq_hz,
         sensor->get_reg(sensor, 0x303a, 0xff), sensor->get_reg(sensor, 0x303b, 0xff),
         sensor->get_reg(sensor, 0x303c, 0xff), sensor->get_reg(sensor, 0x303d, 0xff),
@@ -127,13 +137,16 @@ static uint32_t sensor_sysclk(sensor_t *sensor)
 }
 
 /* All sensor accesses in these helpers occur while the hardware mutex is held.
- * Register definitions: OV3660 datasheet v1.3 sections 3.4.3/3.4.4, tables7-9/7-11:
+ * OV3660: datasheet v1.3 sections 3.4.3/3.4.4, tables7-9/7-11:
  * https://files.seeedstudio.com/wiki/SeeedStudio-XIAO-ESP32S3/res/OV3660_datasheet.pdf
- * No OV5640 register assumptions and no clock/PLL tuning are used here. */
+ * OV5640: datasheet v2.03 sections4.6.1/4.8, tables7-8/7-10 (URL in camera_tuning.h).
+ * The masked AEC/frequency fields below are documented for BOTH sensors;
+ * their clock calculations and automatic detector setup differ. No PLL tuning. */
 static esp_err_t camera_apply_settings(const espclaw_camera_settings_t *settings)
 {
     sensor_t *sensor = esp_camera_sensor_get();
-    if (!sensor || sensor->id.PID != OV3660_PID) return ESP_ERR_NOT_SUPPORTED;
+    if (!sensor || (sensor->id.PID != OV3660_PID && sensor->id.PID != OV5640_PID))
+        return ESP_ERR_NOT_SUPPORTED;
     if (!sensor->get_reg || !sensor->set_reg || !sensor->set_brightness ||
         !sensor->set_saturation || !sensor->set_whitebal || !sensor->set_wb_mode ||
         !sensor->set_awb_gain) return ESP_ERR_NOT_SUPPORTED;
@@ -141,11 +154,16 @@ static esp_err_t camera_apply_settings(const espclaw_camera_settings_t *settings
     int vts = sensor_read16(sensor, 0x380e);
     unsigned step50, step60, max50, max60;
     uint32_t sysclk = sensor_sysclk(sensor);
-    if (hts <= 0 || vts <= 0 || !espclaw_ov3660_banding(sysclk, (unsigned)hts,
-        (unsigned)vts, &step50, &step60, &max50, &max60)) return ESP_ERR_INVALID_STATE;
+    if (hts <= 0 || vts <= 0) return ESP_ERR_INVALID_STATE;
+    bool banding_valid = sensor->id.PID == OV5640_PID ?
+        espclaw_ov5640_banding(sysclk, (unsigned)hts, (unsigned)vts,
+                              &step50, &step60, &max50, &max60) :
+        espclaw_ov3660_banding(sysclk, (unsigned)hts, (unsigned)vts,
+                              &step50, &step60, &max50, &max60);
+    if (!banding_valid) return ESP_ERR_INVALID_STATE;
 
-    /* Match Espressif's OV3660 brightness/saturation baseline, then apply the
-     * user's bounded values. WB presets come from the pinned OV3660 driver. */
+    /* These function pointers select the actual sensor's driver. The stored
+     * brightness/saturation/WB values remain explicit user settings. */
     if (sensor->set_brightness(sensor, settings->brightness) ||
         sensor->set_saturation(sensor, settings->saturation) ||
         sensor->set_whitebal(sensor, 1) || sensor->set_awb_gain(sensor, 1) ||
@@ -161,12 +179,15 @@ static esp_err_t camera_apply_settings(const espclaw_camera_settings_t *settings
         sensor->set_reg(sensor, 0x3a0e, 0x3f, max50) ||
         sensor->set_reg(sensor, 0x3a0d, 0x3f, max60)) return ESP_FAIL;
     if (settings->flicker_hz == 0) {
-        /* Datasheet3.4.3: XVCLK/0x300C[3:0] should be approximately3MHz. */
-        unsigned divider = (sensor->xclk_freq_hz + 1500000U) / 3000000U;
-        if (divider < 1U || divider > 15U) return ESP_ERR_INVALID_STATE;
-        if (sensor->set_reg(sensor, 0x300c, 0x0f, divider) ||
-            sensor->set_reg(sensor, 0x3004, 0x04, 0x04) ||
-            sensor->set_reg(sensor, 0x3c01, 0x80, 0)) return ESP_FAIL;
+        if (sensor->id.PID == OV3660_PID) {
+            /* OV3660 datasheet3.4.3 detector clock; not an OV5640 register. */
+            unsigned divider = (sensor->xclk_freq_hz + 1500000U) / 3000000U;
+            if (divider < 1U || divider > 15U) return ESP_ERR_INVALID_STATE;
+            if (sensor->set_reg(sensor, 0x300c, 0x0f, divider) ||
+                sensor->set_reg(sensor, 0x3004, 0x04, 0x04)) return ESP_FAIL;
+        }
+        /* OV5640 keeps the pinned driver's detector thresholds/clock setup. */
+        if (sensor->set_reg(sensor, 0x3c01, 0x80, 0)) return ESP_FAIL;
     } else {
         if (sensor->set_reg(sensor, 0x3c00, 0x04, settings->flicker_hz == 50 ? 0x04 : 0) ||
             sensor->set_reg(sensor, 0x3c01, 0x80, 0x80)) return ESP_FAIL;
@@ -188,25 +209,44 @@ static void camera_sample_telemetry(unsigned applied_revision)
     sample.available = sensor != NULL;
     sample.sampled_at_us = esp_timer_get_time();
     sample.applied_revision = applied_revision;
+    for (unsigned i = 0; i < ESPCLAW_CAMERA_REGISTER_COUNT; ++i)
+        sample.registers[i] = -1;
     if (sensor) {
         sample.sensor_pid = sensor->id.PID;
         sample.xclk_hz = sensor->xclk_freq_hz;
     }
-    if (sensor && sensor->id.PID == OV3660_PID && sensor->get_reg) {
+    if (sensor && (sensor->id.PID == OV3660_PID || sensor->id.PID == OV5640_PID) &&
+        sensor->get_reg) {
         sample.valid = true;
         for (unsigned i = 0; i < ESPCLAW_CAMERA_REGISTER_COUNT; ++i) {
-            sample.registers[i] = sensor->get_reg(sensor, espclaw_camera_register_addresses[i], 0xff);
+            uint16_t address = espclaw_camera_register_addresses[i];
+            if (sensor->id.PID == OV3660_PID && i >= CAMERA_OV3660_REGISTER_COUNT)
+                continue;
+            if (sensor->id.PID == OV5640_PID &&
+                (address == 0x300c || (address >= 0x303a && address <= 0x303d)))
+                continue;
+            sample.registers[i] = sensor->get_reg(sensor, address, 0xff);
             if (sample.registers[i] < 0) sample.valid = false;
         }
         if (sample.valid) {
 #define REG(address) sampled_register(&sample, (address))
-            sample.sysclk_hz = espclaw_ov3660_sysclk(sample.xclk_hz,
-                REG(0x303a), REG(0x303b), REG(0x303c), REG(0x303d), REG(0x3108));
+            sample.sysclk_hz = sensor->id.PID == OV5640_PID ?
+                espclaw_ov5640_sysclk(sample.xclk_hz, REG(0x3034), REG(0x3035),
+                    REG(0x3036), REG(0x3037), REG(0x3039), REG(0x3103), REG(0x3108)) :
+                espclaw_ov3660_sysclk(sample.xclk_hz,
+                    REG(0x303a), REG(0x303b), REG(0x303c), REG(0x303d), REG(0x3108));
             sample.hts = (REG(0x380c) << 8) | REG(0x380d);
             sample.vts = (REG(0x380e) << 8) | REG(0x380f);
             if (!sample.hts || !sample.vts || !sample.sysclk_hz) sample.valid = false;
             else sample.nominal_sensor_fps = (double)sample.sysclk_hz / sample.hts / sample.vts;
             sample.detected_hz = (REG(0x3c0c) & 1) ? 50 : 60;
+            sample.banding_auto = (REG(0x3c01) & 0x80) == 0;
+            sample.selected_hz = sample.banding_auto ? sample.detected_hz :
+                ((REG(0x3c00) & 4) ? 50 : 60);
+            /* Manual selection is not a measurement of the room lighting.
+             * Preserve the old OV3660 telemetry field for existing clients. */
+            if (sensor->id.PID == OV5640_PID && !sample.banding_auto)
+                sample.detected_hz = 0;
             sample.band_step50 = ((REG(0x3a08) & 3) << 8) | REG(0x3a09);
             sample.band_step60 = ((REG(0x3a0a) & 3) << 8) | REG(0x3a0b);
             sample.max_bands50 = REG(0x3a0e) & 0x3f;

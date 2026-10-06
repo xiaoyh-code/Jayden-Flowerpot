@@ -297,6 +297,20 @@ class CameraSettingsTests(unittest.TestCase):
         self.assertEqual(clean, {"available": True, "valid": True, "settings_applied": False, "wb_manual": False, "sensor_pid": 0x3660, "nominal_sensor_fps": 24.8, "exposure_lines": 222.5, "detected_hz": 50, "sensor_name": "OV3660"})
         self.assertNotIn(BRIDGE["token"], json.dumps(clean))
 
+        # The replacement camera's identity must survive the Mac proxy without
+        # exposing arbitrary sensor strings or raw register data.
+        value.update(sensor_pid=0x5640, sensor_name="OV5640", banding_auto=False,
+                     selected_hz=50, detected_hz=0)
+        clean = web.clean_camera_telemetry(value)
+        self.assertEqual(clean["sensor_pid"], 0x5640)
+        self.assertEqual(clean["sensor_name"], "OV5640")
+        self.assertEqual(clean["selected_hz"], 50)
+        self.assertEqual(clean["detected_hz"], 0)
+        self.assertIs(clean["banding_auto"], False)
+        self.assertNotIn("registers", clean)
+        value["sensor_name"] = BRIDGE["token"]
+        self.assertNotIn("sensor_name", web.clean_camera_telemetry(value))
+
     def test_read_is_authenticated_read_only_and_does_not_persist(self):
         transport = Mock(return_value={"ok": True, "settings": CAMERA_SETTINGS, "telemetry": {}})
         with running_app(transport) as (server, app):
